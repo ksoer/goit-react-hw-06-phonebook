@@ -1,100 +1,76 @@
-import React, { Component } from "react";
-import { v4 as uuidv4 } from "uuid";
-import Form from './components/Form/Form'
-import ContactList from './components/ContactList/ContactList'
-import Filter from './components/Filter/Filter.js'
+import { Component } from 'react';
+import { connect } from 'react-redux';
+import PropTypes from 'prop-types';
+import Form from './Components/Form/Form';
+import ContactList from './Components/ContactList/ContactList';
+import FilterName from './Components/FilterName/FilterName';
+import style from './App.module.css';
+import classNames from 'classnames/bind';
+import Logo from './Components/Logo/Logo';
+import appearSlide from './transitionsCSS/appearSlide.module.css'; 
+import fade from './transitionsCSS/fade.module.css';
+import { CSSTransition } from 'react-transition-group';
+import contactsAction from './Components/redux/contactsRedux/contactsAction';
 
-export default class App extends Component {
-  state = {
-    contacts: [
-        {id: 'id-1', name: 'Rosie Simpson', number: '459-12-56'},
-      {id: 'id-2', name: 'Hermione Kline', number: '443-89-12'},
-      {id: 'id-3', name: 'Eden Clements', number: '645-17-79'},
-      {id: 'id-4', name: 'Annie Copeland', number: '227-91-26'},
-    ],
-    filter: "",
+
+
+let mixStyle = classNames.bind(style);
+
+class App extends Component {
+  static propTypes = {
+    contacts: PropTypes.arrayOf(
+      PropTypes.exact({
+        id: PropTypes.string,
+        name: PropTypes.string,
+        number: PropTypes.string,
+      }),
+    ),
+    clearFilter: PropTypes.func,
   };
 
-  addContact = (task) => {
-    const searchSameName = this.state.contacts
-      .map((cont) => cont.name)
-      .includes(task.name);
-
-    if (searchSameName) {
-      alert(`${task.name} is already in contacts`);
-    } else if (task.name.length === 0) {
-      alert("Fields must be filled!");
-    } else {
-      const contact = {
-        ...task,
-        id: uuidv4(),
-      };
-
-      this.setState((prevState) => ({
-        contacts: [...prevState.contacts, contact],
-      }));
-    }
-  };
-
-  
-
-  getVisibleContacts = () => {
-    const { contacts, filter } = this.state;
-
-    return contacts.filter((contacts) =>
-      contacts.name.toLowerCase().includes(filter.toLowerCase())
-    );
-  };
-
-  filterHandler = (value) => {
-    this.setState(() => ({
-      filter: value,
-    }));
-  };
-
-
-  removeContact = (contactId) => {
-    this.setState((prevState) => {
-      return {
-        contacts: prevState.contacts.filter(({ id }) => id !== contactId),
-      };
-    });
-  };
-
-   componentDidMount() {
-    const contacts = JSON.parse(localStorage.getItem('contacts'));
-    if (contacts) {
-      this.setState({ contacts });
-    }
-  }
-
-  componentDidUpdate(prevProps, prevState) {
-    if (prevState.contacts !== this.state.contacts) {
-      localStorage.setItem('contacts', JSON.stringify(this.state.contacts));
-    }
-  }
-
-
-
- render() {
-    
-
-    const visibleContacts = this.getVisibleContacts();
-
+  render() {
+    const { contacts, clearFilter } = this.props;
     return (
-      <div>
-        <h1>Phonebook</h1>
+      <>
+        <CSSTransition
+         
+          in={true}
+          appear={true}
+          timeout={500}
+          classNames={appearSlide}
+          unmountOnExit
+        >
+          <Logo />
+        </CSSTransition>
+        <Form>
 
-        <Form onAddContact={this.addContact} />
-        <h2>Contacts</h2>
-         <Filter onFilter={this.filterHandler} />
-        {visibleContacts.length > 0 && (
-          <ContactList
-            contacts={visibleContacts}
-            onRemoveContact={this.removeContact}
-          />
-        )}
-      </div>
+        </Form>
+        <CSSTransition
+         
+          in={contacts.length > 1}
+          timeout={500}
+          classNames={fade}
+          unmountOnExit
+          onExit={() => clearFilter()}
+        >
+          <FilterName />
+        </CSSTransition>
+        <h2 className={mixStyle('title', 'center')}>Contacts</h2>
+        <ContactList />
+      </>
     );
   }
 }
+
+const mapStateToProps = ({ contacts: { items } }) => {
+  return {
+    contacts: items,
+  };
+};
+const mapDispatchToProps = dispatch => {
+  return {
+    clearFilter: () => dispatch(contactsAction.changeFilter('')),
+  };
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(App);

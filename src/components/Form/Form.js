@@ -1,67 +1,134 @@
-import React, { Component } from "react";
-import PropTypes from 'prop-types'
-import st from './form.module.css'
+import React, { Component } from 'react';
+import PropTypes from 'prop-types';
+import Alert from '../Alert/Alert';
+import { v4 as uuidv4 } from 'uuid';
+import { ToastContainer, toast } from 'react-toastify';
+import { connect } from 'react-redux';
+import 'react-toastify/dist/ReactToastify.css';
+import style from './form.module.css';
+import contactsAction from '../redux/contactsRedux/contactsAction';
+import fade from '../../transitionsCSS/fade.module.css';
+import { CSSTransition } from 'react-transition-group';
 
 
-export default class Form extends Component {
-  state = {
-    name: "",
-    number: "",
+class Form extends Component {
+  static propTypes = {
+    onSubmitForm: PropTypes.func,
+    contacts: PropTypes.arrayOf(
+      PropTypes.exact({
+        id: PropTypes.string,
+        name: PropTypes.string,
+        number: PropTypes.string,
+      }),
+    ),
   };
 
-  handleChange = (e) => {
-    const { name, value } = e.target;
-    this.setState({
-      [name]: value,
+  state = { name: '', number: '', alertRepetition: '' };
+
+  nameInputId = uuidv4();
+  numberInputId = uuidv4();
+
+  notify = field =>
+    toast.warn(`поле ${field} не должно бить пустым`, {
+      position: 'top-left',
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      progress: undefined,
     });
-  };
 
-  handleSubmit = (e) => {
+  handleSubmit = e => {
     e.preventDefault();
+    const { name, number } = this.state;
+    const contactsProps = this.props.contacts;
+    console.log(contactsProps);
+    if (!name) {
+      this.notify('Name');
+    }
+    if (!number) {
+      this.notify('Number');
+    }
+    if (contactsProps.find(contactName => contactName.name === name)) {
+      /**проверка на повторение имён */
+      this.setState({ alertRepetition: `${name} is already in contacts!` });
+      this.reset();
+      return;
+    }
+    if (name && number) {
+      this.props.onSubmitForm(this.state);
+    }
 
-    this.props.onAddContact({ ...this.state });
-
-    this.setState({ name: "", number: "" });
+    this.reset();
   };
+
+  handleChange = e => {
+    const { name, value } = e.currentTarget;
+    this.setState({ [name]: value });
+  };
+
+  reset = () => {
+    this.setState({ name: '', number: '' });
+  };
+
+  onResetAlert = () => {
+    this.setState({ alertRepetition: '' });
+  };
+
   render() {
+    const { name, number, alertRepetition } = this.state;
     return (
-      <form className={st.TaskEditor} onSubmit={this.handleSubmit}>
-        <label className={st.TaskEditor_label}>
-          Name
-          <input
-            className={st.TaskEditor_input}
-            type="text"
-            name="name"
-            value={this.state.name}
-            onChange={this.handleChange}
-            pattern="^[a-zA-Zа-яА-Я]+(([' -][a-zA-Zа-яА-Я ])?[a-zA-Zа-яА-Я]*)*$"
-            title="The name can only consist of letters, apostrophes, dashes and spaces. For example Adrian, Jacob Mercer, Charles de Batz de Castelmore d'Artagnan и т. п."
-            required
-          />
-        </label>
-        <label className={st.TaskEditor_label}>
-          Number
-          <input
-            className={st.TaskEditor_input}
-            type="text"
-            name="number"
-            value={this.state.number}
-            onChange={this.handleChange}
-            pattern="(\+?( |-|\.)?\d{1,2}( |-|\.)?)?(\(?\d{3}\)?|\d{3})( |-|\.)?(\d{3}( |-|\.)?\d{4})"
-            title="The phone number must be 11-12 digits long and can contain numbers, spaces, dashes, pot-bellied brackets and can start with +"
-            required
-          />
-        </label>
-        <button className={st.TaskEditor_button} type="submit">
-          Add contact
-        </button>
-      </form>
+      <>
+        <form onSubmit={this.handleSubmit} className={style.container}>
+          <label htmlFor={this.nameInputId} className={style.item}>
+            Name
+            <input
+              type="text"
+              name="name"
+              value={name}
+              onChange={this.handleChange}
+              id={this.nameInputId}
+            />
+          </label>
+          <label htmlFor={this.numberInputId} className={style.item}>
+            Number
+            <input
+              type="tel"
+              name="number"
+              value={number}
+              onChange={this.handleChange}
+              id={this.numberInputId}
+            />
+          </label>
+          <ToastContainer />
+          <button type="submit">Add contact</button>
+        </form>
+        <CSSTransition
+         
+          in={alertRepetition.length > 0}
+          timeout={3000}
+          classNames={fade}
+          unmountOnExit
+          onEntered={() => this.onResetAlert()}
+        >
+          <Alert message={alertRepetition} />
+        </CSSTransition>
+      </>
     );
   }
 }
 
-Form.propTypes = {
-  onAddContact: PropTypes.func.isRequired,
-  name: PropTypes.string.isRequired,
-  number: PropTypes.string.isRequired,
+const mapStateToProps = ({ contacts: { items } }) => {
+  return {
+    contacts: items,
+  };
 };
+
+const mapDispatchToProps = dispatch => {
+  return {
+    onSubmitForm: contact => dispatch(contactsAction.addContact(contact)),
+  };
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(Form);
